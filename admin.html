@@ -7,10 +7,12 @@
 body { font-family: Arial; background: #eee; }
 .box { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
 input, button, select { padding: 8px; margin: 5px; }
-.group-box { border:1px solid #aaa; padding:10px; margin:10px 0; border-radius:5px; }
+.groupBox { border:1px solid #ccc; padding:10px; margin:5px; border-radius:8px; background:#f8f8f8; }
+.matchBox { border-bottom:1px solid #ddd; padding:5px; }
 </style>
 </head>
 <body>
+
 <div class="box">
 <h1>Admin felület</h1>
 
@@ -53,9 +55,13 @@ input, button, select { padding: 8px; margin: 5px; }
 <button onclick="generateKnockouts()">Kieséses szakasz generálása</button>
 <div id="knockoutDisplay"></div>
 
-<button onclick="window.location='index.html'">Nézői oldal</button>
+<h2>DOBogó</h2>
+<div id="finalPodium"></div>
+
+<button onclick="window.location='index.html'">Eredmények megtekintése</button>
 </div>
 </div>
+
 
 <script src="login.js"></script>
 <script src="data.js"></script>
@@ -63,28 +69,27 @@ input, button, select { padding: 8px; margin: 5px; }
 <script>
 function updateAdminView() {
     if(getLoggedInUser()){
-        document.getElementById("loginSection").style.display="none";
-        document.getElementById("adminPanel").style.display="block";
+        loginSection.style.display="none";
+        adminPanel.style.display="block";
         renderTournamentList();
         renderTeamList();
         renderMatches();
+        renderManualGroups();
     }
 }
 updateAdminView();
 
-function logout(){ logoutUser(); location.reload(); }
-
 function handleRegister(){
-    let u=reg_user.value,p=reg_pass.value;
-    let r=registerUser(u,p);
-    alert(r==="OK" ? "Sikeres regisztráció!" : r);
+    let r = registerUser(reg_user.value, reg_pass.value);
+    alert(r === "OK" ? "Sikeres regisztráció!" : r);
 }
 function handleLogin(){
-    let u=login_user.value,p=login_pass.value;
-    let r=loginUser(u,p);
-    if(r==="OK") updateAdminView();
+    let r = loginUser(login_user.value, login_pass.value);
+    if(r==="OK"){ updateAdminView(); }
     else alert(r);
 }
+function logout(){ logoutUser(); location.reload(); }
 </script>
+
 </body>
 </html>
