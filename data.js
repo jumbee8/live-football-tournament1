@@ -105,7 +105,6 @@ function generateKnockouts(){
     // Csak csoportonkénti továbbjutás
     t.knockouts=[];
     t.groups.forEach(g=>{
-        // Rangsor: a legtöbb győzelem/scoreA>scoreB
         let scores = g.map(team=>{
             let won = t.matches.filter(m=>
                 ((m.teamA==team && parseInt(m.scoreA||0)>parseInt(m.scoreB||0))||
