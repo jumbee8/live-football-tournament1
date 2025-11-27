@@ -6,9 +6,10 @@
 <style>
 body { font-family: Arial; background: #eee; }
 .box { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
-input, button, select { padding: 8px; margin: 5px; }
+input, button, select { padding: 6px; margin: 5px; }
 .groupBox { border:1px solid #ccc; padding:10px; margin:5px; border-radius:8px; background:#f8f8f8; }
 .matchBox { border-bottom:1px solid #ddd; padding:5px; }
+.teamBox { margin:3px 0; }
 </style>
 </head>
 <body>
@@ -42,9 +43,7 @@ input, button, select { padding: 8px; margin: 5px; }
 <div id="teamList"></div>
 
 <h2>Csoportok kezelése</h2>
-<input id="teamPerGroup" type="number" placeholder="Hány csapat / csoport">
-<button onclick="createGroups()">Automatikus generálás</button>
-<button onclick="manualGroupSetup()">Kézi csoportok szerkesztése</button>
+<button onclick="addManualGroup()">➕ Új csoport</button>
 <div id="manualGroups"></div>
 
 <h2>Mérkőzések</h2>
@@ -55,40 +54,187 @@ input, button, select { padding: 8px; margin: 5px; }
 <button onclick="generateKnockouts()">Kieséses szakasz generálása</button>
 <div id="knockoutDisplay"></div>
 
-<h2>DOBogó</h2>
+<h2>Dobogó</h2>
 <div id="finalPodium"></div>
 
 <button onclick="window.location='index.html'">Eredmények megtekintése</button>
 </div>
-</div>
-
 
 <script src="login.js"></script>
 <script src="data.js"></script>
 
 <script>
+// --- ADMIN VIEW
 function updateAdminView() {
     if(getLoggedInUser()){
         loginSection.style.display="none";
         adminPanel.style.display="block";
         renderTournamentList();
         renderTeamList();
-        renderMatches();
         renderManualGroups();
+        renderMatches();
     }
 }
 updateAdminView();
 
+// --- LOGIN
 function handleRegister(){
     let r = registerUser(reg_user.value, reg_pass.value);
-    alert(r === "OK" ? "Sikeres regisztráció!" : r);
+    alert(r==="OK"?"Sikeres regisztráció!":r);
 }
 function handleLogin(){
     let r = loginUser(login_user.value, login_pass.value);
-    if(r==="OK"){ updateAdminView(); }
+    if(r==="OK") updateAdminView();
     else alert(r);
 }
 function logout(){ logoutUser(); location.reload(); }
+
+// --- CSAPATOK
+function addTeam(){
+    if(!activeTID) return alert("Válassz tornát!");
+    let name = document.getElementById("teamName").value.trim();
+    if(!name) return;
+    let t = db.tournaments.find(x=>x.id===activeTID);
+    if(t.teams.includes(name)) return alert("Ez a csapat már létezik!");
+    t.teams.push(name); saveDB();
+    renderTeamList(); renderManualGroups(); generateGroupMatches(); renderMatches();
+}
+function removeTeamFromGroup(g,team){
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    t.groups[g]=t.groups[g].filter(x=>x!==team);
+    saveDB(); renderManualGroups(); generateGroupMatches(); renderMatches();
+}
+function moveTeamToGroup(fromG,toG,team){
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    t.groups[fromG]=t.groups[fromG].filter(x=>x!==team);
+    t.groups[toG].push(team);
+    saveDB(); renderManualGroups(); generateGroupMatches(); renderMatches();
+}
+
+// --- CSOPORTOK
+function addManualGroup(){
+    if(!activeTID) return;
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    let i=Object.keys(t.groups).length+1;
+    t.groups["Csoport "+i]=[];
+    saveDB();
+    renderManualGroups();
+}
+
+function renderManualGroups(){
+    if(!activeTID) return;
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    let out="";
+    Object.keys(t.groups).forEach(g=>{
+        out+=`<div class="groupBox"><b>${g}</b> `;
+        t.groups[g].forEach(team=>{
+            out+=`<div class="teamBox">${team} 
+            <select id="sel_${g}_${team}">`+
+                Object.keys(t.groups).filter(x=>x!==g).map(x=>`<option>${x}</option>`).join("")+
+                `</select>
+            <button onclick="moveTeamToGroup('${g}',document.getElementById('sel_${g}_${team}').value,'${team}')">⬅ Áthelyez</button>
+            <button onclick="removeTeamFromGroup('${g}','${team}')">❌</button>
+            </div>`;
+        });
+        out+=`</div>`;
+    });
+    manualGroups.innerHTML=out;
+}
+
+// --- MÉRKŐZÉSEK
+function generateGroupMatches(){
+    if(!activeTID) return;
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    t.matches=[];
+    for(let g in t.groups){
+        let teams=t.groups[g];
+        for(let i=0;i<teams.length;i++){
+            for(let j=i+1;j<teams.length;j++){
+                t.matches.push({group:g,home:teams[i],away:teams[j],homeScore:null,awayScore:null});
+            }
+        }
+    }
+    saveDB(); renderMatches();
+}
+
+function renderMatches(){
+    if(!activeTID) return;
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    let out="";
+    t.matches.forEach((m,i)=>{
+        out+=`<div class="matchBox">
+        <b>${m.group}</b> ${m.home} vs ${m.away}<br>
+        <input type="number" id="h${i}" value="${m.homeScore??""}" onchange="setScore(${i})">
+        -
+        <input type="number" id="a${i}" value="${m.awayScore??""}" onchange="setScore(${i})">
+        </div>`;
+    });
+    matchList.innerHTML=out;
+}
+
+function setScore(idx){
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    t.matches[idx].homeScore=Number(document.getElementById("h"+idx).value);
+    t.matches[idx].awayScore=Number(document.getElementById("a"+idx).value);
+    saveDB();
+}
+
+// --- KIESÉS
+function generateKnockouts(){
+    if(!activeTID) return;
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    let adv=Number(advanceCount.value);
+    if(!adv) return alert("Írd be a továbbjutók számát!");
+    let qualified=[];
+    for(let g in t.groups){
+        let teams=t.groups[g]; let scores={}; teams.forEach(x=>scores[x]=0);
+        t.matches.filter(m=>m.group===g).forEach(m=>{
+            if(m.homeScore!=null && m.awayScore!=null){
+                if(m.homeScore>m.awayScore) scores[m.home]+=3;
+                else if(m.homeScore<m.awayScore) scores[m.away]+=3;
+                else { scores[m.home]++; scores[m.away]++; }
+            }
+        });
+        let sorted = Object.keys(scores).sort((a,b)=>scores[b]-scores[a]);
+        qualified.push(...sorted.slice(0,adv));
+    }
+    t.knockout=[]; while(qualified.length>=2){
+        let a=qualified.shift(); let b=qualified.pop();
+        t.knockout.push({home:a,away:b,homeScore:null,awayScore:null});
+    }
+    saveDB(); renderKnockout();
+}
+
+function renderKnockout(){
+    if(!activeTID) return;
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    knockoutDisplay.innerHTML=t.knockout.map((m,i)=>`
+        <div class="matchBox">
+        ${m.home} vs ${m.away}<br>
+        <input id="kh${i}" type="number" value="${m.homeScore??""}" onchange="setKnockScore(${i})">
+        -
+        <input id="ka${i}" type="number" value="${m.awayScore??""}" onchange="setKnockScore(${i})">
+        </div>`).join("");
+}
+
+function setKnockScore(idx){
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    t.knockout[idx].homeScore=Number(document.getElementById("kh"+idx).value);
+    t.knockout[idx].awayScore=Number(document.getElementById("ka"+idx).value);
+    saveDB();
+}
+
+// --- DOBÓGÓ (egyszerű)
+function computePodium(){
+    let t=db.tournaments.find(x=>x.id===activeTID);
+    if(!t.knockout.length) return;
+    let f=t.knockout[t.knockout.length-1];
+    let champ=f.homeScore>f.awayScore?f.home:f.away;
+    let second=champ===f.home?f.away:f.home;
+    t.podium=[champ,second,"3. hely – nincs kisorsolva"];
+    saveDB();
+    finalPodium.innerHTML=`🥇 ${t.podium[0]}<br>🥈 ${t.podium[1]}<br>🥉 ${t.podium[2]}`;
+}
 </script>
 
 </body>
