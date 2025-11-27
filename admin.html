@@ -7,6 +7,7 @@
 body { font-family: Arial; background: #eee; }
 .box { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
 input, button, select { padding: 8px; margin: 5px; }
+.group-box { border:1px solid #aaa; padding:10px; margin:10px 0; border-radius:5px; }
 </style>
 </head>
 <body>
@@ -36,6 +37,7 @@ input, button, select { padding: 8px; margin: 5px; }
 <h2>Csapatok felvitele</h2>
 <input id="teamName" placeholder="Csapat neve">
 <button onclick="addTeam()">Hozzáadás</button>
+<div id="teamList"></div>
 
 <h2>Csoportok kezelése</h2>
 <input id="teamPerGroup" type="number" placeholder="Hány csapat / csoport">
@@ -43,34 +45,46 @@ input, button, select { padding: 8px; margin: 5px; }
 <button onclick="manualGroupSetup()">Kézi csoportok szerkesztése</button>
 <div id="manualGroups"></div>
 
-<h2>Eredmény rögzítése</h2>
+<h2>Mérkőzések</h2>
 <div id="matchList"></div>
 
-<h2>Kieséses szakasz és dobogó</h2>
+<h2>Kieséses szakasz</h2>
 <input id="advanceCount" type="number" placeholder="Hány jut tovább a csoportból">
 <button onclick="generateKnockouts()">Kieséses szakasz generálása</button>
 <div id="knockoutDisplay"></div>
 
-<button onclick="window.location='index.html'">Eredmények megtekintése</button>
+<button onclick="window.location='index.html'">Nézői oldal</button>
 </div>
 </div>
 
 <script src="login.js"></script>
 <script src="data.js"></script>
+
 <script>
 function updateAdminView() {
     if(getLoggedInUser()){
         document.getElementById("loginSection").style.display="none";
         document.getElementById("adminPanel").style.display="block";
         renderTournamentList();
-        fillMatchList();
+        renderTeamList();
+        renderMatches();
     }
 }
 updateAdminView();
 
-function logout(){logoutUser(); location.reload();}
-function handleRegister(){let u=reg_user.value,p=reg_pass.value,r=registerUser(u,p);alert(r==="OK"?"Sikeres regisztráció!":r);}
-function handleLogin(){let u=login_user.value,p=login_pass.value,r=loginUser(u,p);if(r==="OK") updateAdminView();else alert(r);}
+function logout(){ logoutUser(); location.reload(); }
+
+function handleRegister(){
+    let u=reg_user.value,p=reg_pass.value;
+    let r=registerUser(u,p);
+    alert(r==="OK" ? "Sikeres regisztráció!" : r);
+}
+function handleLogin(){
+    let u=login_user.value,p=login_pass.value;
+    let r=loginUser(u,p);
+    if(r==="OK") updateAdminView();
+    else alert(r);
+}
 </script>
 </body>
 </html>

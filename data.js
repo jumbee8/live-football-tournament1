@@ -1,151 +1,194 @@
-// --- Inicializálás ---
-let DB = { tournaments: [] };
-let currentTournamentIndex = null;
+/// ===== LOGIN ADATOK =====
+function load(key){ return JSON.parse(localStorage.getItem(key) || "[]"); }
+function save(key,data){ localStorage.setItem(key, JSON.stringify(data)); }
 
-function loadDB() {
-    let raw = localStorage.getItem("torna_db");
-    if (raw) {
-        try { DB = JSON.parse(raw); } 
-        catch(e) { DB = { tournaments: [] }; }
+function registerUser(u,p){
+    let users = load("users");
+    if(users.find(x=>x.user===u)) return "A felhasználó létezik!";
+    users.push({user:u,pass:p});
+    save("users", users);
+    return "OK";
+}
+function loginUser(u,p){
+    let users = load("users");
+    if(users.find(x=>x.user===u && x.pass===p)){
+        localStorage.setItem("loggedIn", u);
+        return "OK";
     }
-    DB.tournaments = DB.tournaments || [];
+    return "Hibás adatok!";
 }
-function saveDB() { localStorage.setItem("torna_db", JSON.stringify(DB)); }
-loadDB();
+function logoutUser(){ localStorage.removeItem("loggedIn"); }
+function getLoggedInUser(){ return localStorage.getItem("loggedIn"); }
 
-// --- Tornák kezelése ---
+// ===== FŐ ADATOK =====
+// tournament = { name:"...", teams:[], groups:[], matches:[], knockout:[] }
+
+function getData(){
+    let u = getLoggedInUser();
+    if(!u) return null;
+    let data = load("tournaments_"+u);
+    return data.length ? data : [];
+}
+function saveData(arr){
+    let u = getLoggedInUser();
+    save("tournaments_"+u, arr);
+}
+
+// ===== TORNÁK =====
 function addTournament(name){
-    if(!name) return alert("Adj nevet a tornának!");
-    DB.tournaments.push({name, teams:[], groups:[], matches:[], knockouts:[], podium:[]}); 
-    saveDB(); renderTournamentList();
-}
-function deleteTournament(index){
-    if(!confirm("Biztosan törlöd a tornát?")) return; 
-    DB.tournaments.splice(index,1); 
-    if(currentTournamentIndex===index) currentTournamentIndex=null; 
-    saveDB(); renderTournamentList();
-}
-function selectTournament(i){
-    currentTournamentIndex=i; 
-    fillMatchList(); 
+    if(!name) return alert("Adj meg nevet!");
+    let d = getData();
+    d.push({name, teams:[], groups:[], matches:[], knockout:[]});
+    saveData(d);
     renderTournamentList();
 }
-
-// --- Csapatok ---
-function addTeam(){
-    if(currentTournamentIndex===null) return alert("Válassz tornát!");
-    let name=document.getElementById("teamName").value;
-    if(!name) return alert("Adj csapatnevet!");
-    let t = DB.tournaments[currentTournamentIndex];
-    if(t.teams.includes(name)) return alert("Ez a csapat már fel van véve!");
-    t.teams.push(name); 
-    saveDB(); renderTournamentList();
+function renderTournamentList(){
+    let d=getData();
+    let box=document.getElementById("tournamentList");
+    box.innerHTML="";
+    d.forEach((t,i)=>{
+        let b=document.createElement("button");
+        b.textContent=t.name;
+        b.onclick=()=>{localStorage.setItem("currentTournament",i); renderTeamList(); renderMatches();};
+        box.appendChild(b);
+    });
+}
+function getCurrent(){
+    let d=getData();
+    let i=localStorage.getItem("currentTournament");
+    return d[i] || null;
+}
+function saveCurrent(t){
+    let d=getData();
+    let i=localStorage.getItem("currentTournament");
+    d[i]=t;
+    saveData(d);
 }
 
-// --- Csoportok ---
-function createGroups(){
-    if(currentTournamentIndex===null) return alert("Válassz tornát!");
-    let per=parseInt(document.getElementById("teamPerGroup").value);
-    if(!per || per<1) return alert("Adj meg csapatszámot!");
-    let t = DB.tournaments[currentTournamentIndex];
-    t.groups=[];
-    t.matches=[];
-    let teamsCopy = [...t.teams];
-    
-    while(teamsCopy.length){
-        t.groups.push(teamsCopy.splice(0, per));
-    }
+// ===== CSAPATOK =====
+function renderTeamList(){
+    let t=getCurrent(); if(!t) return;
+    let box=document.getElementById("teamList");
+    box.innerHTML="<h3>Csapatok:</h3>";
+    t.teams.forEach(c=>box.innerHTML+=c+"<br>");
+}
+function addTeam(){
+    let t=getCurrent(); if(!t) return;
+    let name=document.getElementById("teamName").value.trim();
+    if(!name) return alert("Adj meg csapatnevet!");
+    if(t.teams.includes(name)) return alert("Már létezik ez a csapat!");
 
-    // Minden csoport mérkőzései
-    t.groups.forEach(g=>{
+    t.teams.push(name);
+    saveCurrent(t);
+    renderTeamList();
+}
+
+// ===== AUTOMATIKUS CSOPORTOK =====
+function createGroups(){
+    let t=getCurrent(); if(!t) return;
+    let size=parseInt(document.getElementById("teamPerGroup").value);
+    if(!size || size<2) return alert("Hibás érték!");
+
+    t.groups=[];
+    let temp=[...t.teams];
+
+    while(temp.length){
+        t.groups.push(temp.splice(0,size));
+    }
+    saveCurrent(t);
+    alert("Csoportok létrehozva!");
+}
+
+// ===== KÉZI CSOPORTBEOSZTÁS =====
+function manualGroupSetup(){
+    let t=getCurrent(); if(!t) return;
+    let box=document.getElementById("manualGroups");
+    box.innerHTML="<h3>Kézi szerkesztés</h3>";
+
+    t.groups = t.groups.length ? t.groups : [[]];
+
+    t.groups.forEach((g,gi)=>{
+        let div=document.createElement("div");
+        div.className="group-box";
+        div.innerHTML="<b>"+(gi+1)+". csoport</b><br>";
+
+        g.forEach(team=>{
+            div.innerHTML+=team+"<br>";
+        });
+
+        // új csapat hozzáadása kézzel
+        let sel=document.createElement("select");
+        sel.id="groupAdd_"+gi;
+
+        let opt=document.createElement("option");
+        opt.value=""; opt.textContent="Válassz csapatot";
+        sel.appendChild(opt);
+
+        t.teams.forEach(team=>{
+            if(!g.includes(team)){
+                let o=document.createElement("option");
+                o.value=team; o.textContent=team;
+                sel.appendChild(o);
+            }
+        });
+
+        let btn=document.createElement("button");
+        btn.textContent="Hozzáadás";
+        btn.onclick=function(){
+            let team=document.getElementById("groupAdd_"+gi).value;
+            if(team){
+                g.push(team);
+                saveCurrent(t);
+                manualGroupSetup();
+            }
+        };
+
+        div.appendChild(sel);
+        div.appendChild(btn);
+
+        box.appendChild(div);
+    });
+}
+
+// ===== MÉRKŐZÉSEK LISTÁJA =====
+function renderMatches(){
+    let t=getCurrent(); if(!t) return;
+    let box=document.getElementById("matchList");
+    box.innerHTML="";
+
+    if(!t.groups.length) return;
+
+    t.matches = []; // mindig újrageneráljuk
+
+    t.groups.forEach((g,gi)=>{
+        box.innerHTML+="<h3>"+(gi+1)+". csoport</h3>";
+
         for(let i=0;i<g.length;i++){
             for(let j=i+1;j<g.length;j++){
-                t.matches.push({teamA:g[i], teamB:g[j], scoreA:"", scoreB:""});
+                let m={a:g[i], b:g[j], score:null};
+                t.matches.push(m);
+
+                box.innerHTML+=g[i]+" vs "+g[j]+
+                    ` <input data-a="${g[i]}" data-b="${g[j]}" size="1" class="scA"> : 
+                      <input data-a="${g[i]}" data-b="${g[j]}" size="1" class="scB"><br>`;
             }
         }
     });
-    saveDB(); fillMatchList(); renderTournamentList();
+
+    saveCurrent(t);
 }
 
-function manualGroupSetup(){
-    alert("Kézi csoportalkotás mostantól implementálható drag/drop vagy select alapján.");
-}
-
-// --- Mérkőzések ---
-function fillMatchList(){
-    if(currentTournamentIndex===null) return;
-    let t = DB.tournaments[currentTournamentIndex];
-    let div=document.getElementById("matchList");
-    if(!div) return;
-    div.innerHTML="";
-    t.matches.forEach((m,i)=>{
-        div.innerHTML+=`
-            <div>
-            ${m.teamA} <input placeholder='Hazai' value='${m.scoreA||""}' onchange='saveMatchResult(${i}, this.value, null)'> : 
-            <input placeholder='Vendég' value='${m.scoreB||""}' onchange='saveMatchResult(${i}, null, this.value)'> ${m.teamB}
-            </div>`;
-    });
-}
-
-function saveMatchResult(idx,a,b){
-    if(currentTournamentIndex===null) return;
-    let t = DB.tournaments[currentTournamentIndex];
-    if(a!==null) t.matches[idx].scoreA=a;
-    if(b!==null) t.matches[idx].scoreB=b;
-    saveDB();
-}
-
-// --- Továbblépés, kiesés ---
+// ===== KIESÉSES SZAKASZ =====
 function generateKnockouts(){
-    if(currentTournamentIndex===null) return alert("Válassz tornát!");
-    let count=parseInt(document.getElementById("advanceCount").value);
-    if(!count || count<1) return alert("Adj meg hány csapat jusson tovább!");
-    let t=DB.tournaments[currentTournamentIndex];
+    let t=getCurrent(); if(!t) return;
+    let n=parseInt(document.getElementById("advanceCount").value);
+    if(!n) return alert("Adj meg számot!");
 
-    // Csak csoportonkénti továbbjutás
-    t.knockouts=[];
-    t.groups.forEach(g=>{
-        let scores = g.map(team=>{
-            let won = t.matches.filter(m=>
-                ((m.teamA==team && parseInt(m.scoreA||0)>parseInt(m.scoreB||0))||
-                 (m.teamB==team && parseInt(m.scoreB||0)>parseInt(m.scoreA||0)))
-            ).length;
-            return {team, won};
-        });
-        scores.sort((a,b)=>b.won-a.won);
-        t.knockouts.push(...scores.slice(0,count).map(x=>x.team));
-    });
-    alert("Kieséses szakasz előkészítve: "+t.knockouts.join(", "));
-    saveDB();
-}
+    // egyszerű dobogó generálás helykitöltő mód
+    t.knockout = ["Elődöntő 1","Elődöntő 2","Döntő","Bronzmeccs"];
 
-// --- Nézői oldal ---
-function renderTournamentList(){
-    let div=document.getElementById("tournamentList");
-    if(!div) return;
-    div.innerHTML="";
-    DB.tournaments.forEach((t,i)=>{
-        let d=document.createElement("div");
-        d.innerHTML=`<b>${t.name}</b>
-        <button onclick="selectTournament(${i})">Megnyitás</button>
-        <button onclick="deleteTournament(${i})">Törlés</button>
-        <div>Csapatok: ${t.teams.join(", ")}</div>`;
-        div.appendChild(d);
-    });
-}
+    saveCurrent(t);
 
-function renderTournamentsForIndex(){
-    let box=document.getElementById("tournamentDisplay");
-    if(!box) return;
-    box.innerHTML="";
-    DB.tournaments.forEach(t=>{
-        let div=document.createElement("div");
-        div.innerHTML=`<h2>${t.name}</h2>`;
-        t.groups.forEach((g,gi)=>{ div.innerHTML+=`<h3>${gi+1}. csoport</h3>${g.join("<br>")}`; });
-        div.innerHTML+="<h3>Mérkőzések</h3>";
-        t.matches.forEach(m=>{
-            div.innerHTML+=`<div>${m.teamA} ${m.scoreA||"-"} : ${m.scoreB||"-"} ${m.teamB}</div>`;
-        });
-        box.appendChild(div);
-    });
+    document.getElementById("knockoutDisplay").innerHTML =
+        "<h3>Kieséses szakasz generálva</h3>";
 }
