@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>Focitorna – Élő eredmények</title>
+<style>
+body { font-family: Arial; background: linear-gradient(rgba(255,255,255,0.85), rgba(255,255,255,0.85)),
+ url('https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Flag_of_Hungary.svg/2560px-Flag_of_Hungary.svg.png'); background-size: cover; }
+.container { max-width: 1000px; margin:auto; background:white; padding:20px; border-radius:10px; }
+table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+th, td { border:1px solid #333; padding:5px; text-align:center; }
+</style>
+</head>
+<body>
+<div class="container">
+<h1>Focitorna – Élő eredmények</h1>
+<div id="tournamentDisplay"></div>
+<hr>
+<a href="admin.html">Admin belépés</a>
+</div>
+<script src="data.js"></script>
+<script>
+renderTournamentsForIndex();
+</script>
+</body>
+</html>
