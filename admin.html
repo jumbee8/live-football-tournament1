@@ -580,6 +580,25 @@ window.addEventListener("storage", (e)=>{
     renderAllUI();
   }
 });
+<script>
+function saveResult(){
+    let select = document.getElementById("matchSelect");
+    let matchId = select.value;
+
+    let a = document.getElementById("scoreA").value;
+    let b = document.getElementById("scoreB").value;
+    if(a==="" || b===""){
+        alert("Add meg a gólokat!");
+        return;
+    }
+
+    saveMatchResult(matchId, Number(a), Number(b));
+
+    alert("Eredmény elmentve!");
+    fillMatchList(); // frissíti a listát, hogy látszódjon az új eredmény
+}
+</script>
+
 </script>
 </body>
 </html>
