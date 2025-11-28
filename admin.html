@@ -1,604 +1,106 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-<meta charset="utf-8" />
-<title>Focitorna — Admin</title>
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta charset="UTF-8">
+<title>Focitorna Admin</title>
 <style>
-body{font-family:Arial,Helvetica,sans-serif;background:#f0f2f5;color:#111;padding:12px;}
-.container{max-width:1100px;margin:10px auto;background:#fff;padding:18px;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.06);}
-.row{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:10px;}
-.col{flex:1;min-width:220px;}
-.box{border:1px solid #e3e6ea;padding:10px;border-radius:6px;background:#fafafa;}
-h1,h2{margin:6px 0;}
-button{padding:6px 10px;border-radius:6px;border:1px solid #bbb;background:#fff;cursor:pointer;}
-input,select{padding:6px;border:1px solid #ccc;border-radius:6px;width:100%;}
-.small{width:120px;}
-.groupBox{border:1px solid #ddd;padding:8px;margin:8px 0;border-radius:6px;background:#fff;}
-.teamItem{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 8px;border-radius:6px;background:#f7f9fc;margin:4px 0;}
-.matchRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:6px;border-bottom:1px solid #eee;}
-.bad{color:#9b1111;font-weight:bold;}
-.success{color:#117a37;font-weight:bold;}
+body { font-family: Arial; background: #eee; }
+.box { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; }
+input, button, select { padding: 8px; margin: 5px; }
+.match-row { padding: 6px; border-bottom: 1px solid #ccc; }
 </style>
 </head>
 <body>
-<div class="container">
-  <h1>Focitorna — Admin</h1>
+<div class="box">
+<h1>Admin felület</h1>
 
-  <!-- LOGIN / REGISTER -->
-  <div id="authArea" class="box">
-    <div class="row">
-      <div class="col">
-        <h3>Regisztráció</h3>
-        <input id="regUser" placeholder="Felhasználónév">
-        <input id="regPass" placeholder="Jelszó" type="password">
-        <button onclick="uiRegister()">Regisztrálás</button>
-      </div>
-      <div class="col">
-        <h3>Bejelentkezés</h3>
-        <input id="logUser" placeholder="Felhasználónév">
-        <input id="logPass" placeholder="Jelszó" type="password">
-        <button onclick="uiLogin()">Belépés</button>
-      </div>
-      <div class="col" style="min-width:200px">
-        <h3>Jelenleg</h3>
-        <div id="who">Nincs bejelentkezve</div>
-        <div style="margin-top:6px;">
-          <button onclick="uiLogout()">Kijelentkezés</button>
-        </div>
-      </div>
-    </div>
-  </div>
+<!-- BEJELENTKEZÉS -->
+<div id="loginSection">
+<h3>Bejelentkezés</h3>
+<input id="login_user" placeholder="Felhasználónév"><br>
+<input id="login_pass" type="password" placeholder="Jelszó"><br>
+<button onclick="handleLogin()">Belépés</button>
 
-  <!-- MAIN ADMIN PANEL -->
-  <div id="adminPanel" style="display:none;margin-top:12px;">
-    <div class="row">
-      <!-- Tournaments -->
-      <div class="col box">
-        <h2>Tornák</h2>
-        <div class="row">
-          <input id="newTournamentName" placeholder="Torna neve">
-          <button onclick="createTournament()">Torna létrehozása</button>
-        </div>
-        <div id="tournamentList"></div>
-      </div>
-
-      <!-- Teams -->
-      <div class="col box">
-        <h2>Csapatok</h2>
-        <div class="row">
-          <input id="newTeamName" placeholder="Csapat neve">
-          <button onclick="addTeam()">Csapat hozzáadása</button>
-        </div>
-        <div id="teamList" style="max-height:260px;overflow:auto"></div>
-      </div>
-    </div>
-
-    <!-- Groups -->
-    <div class="row">
-      <div class="col box">
-        <h2>Csoportok</h2>
-        <div class="row">
-          <input id="teamsPerGroup" class="small" placeholder="Csapat / csoport" type="number" min="2">
-          <button onclick="autoCreateGroups()">Automatikus sorolás</button>
-          <button onclick="addGroupUI()">➕ Új csoport</button>
-          <button onclick="saveDB()">Mentés</button>
-        </div>
-        <div id="groupsArea"></div>
-        <div style="margin-top:8px;color:#666;font-size:13px">Kézi sorsolásnál használd az "Áthelyez" és "Töröl" gombokat.</div>
-      </div>
-
-      <!-- Matches & scheduling -->
-      <div class="col box">
-        <h2>Mérkőzések (csoportkör)</h2>
-        <div style="margin-bottom:8px;">
-          <button onclick="regenerateMatches()">Meccsek generálása automatikusan</button>
-          <button onclick="saveDB()">Mentés</button>
-        </div>
-        <div id="matchesArea" style="max-height:420px;overflow:auto"></div>
-      </div>
-    </div>
-
-    <!-- Knockout -->
-    <div class="row">
-      <div class="col box">
-        <h2>Kieséses szakasz</h2>
-        <div class="row">
-          <input id="advanceCount" class="small" placeholder="Hány jut tovább" type="number" min="1">
-          <button onclick="autoKnockout()">Automatikus továbbjutók + sorsolás</button>
-          <button onclick="manualKnockoutUI()">Kézi párosítás</button>
-          <button onclick="saveDB()">Mentés</button>
-        </div>
-        <div id="knockoutArea"></div>
-      </div>
-
-      <div class="col box">
-        <h2>Dobogó</h2>
-        <div id="podiumArea"></div>
-        <div style="margin-top:8px;">
-          <button onclick="computePodium()">Dobogó kiszámolása (egyszerű)</button>
-        </div>
-      </div>
-    </div>
-
-  </div>
+<h3>Regisztráció</h3>
+<input id="reg_user" placeholder="Új felhasználó"><br>
+<input id="reg_pass" type="password" placeholder="Új jelszó"><br>
+<button onclick="handleRegister()">Regisztráció</button>
 </div>
 
+<!-- ADMIN PANEL -->
+<div id="adminPanel" style="display:none;">
+<button onclick="logout()">Kijelentkezés</button>
+
+<h2>Tornák kezelése</h2>
+<input id="tournamentName" placeholder="Torna neve">
+<button onclick="addTournament(tournamentName.value)">Torna létrehozása</button>
+<div id="tournamentList"></div>
+
+<h2>Csapatok felvitele</h2>
+<input id="teamName" placeholder="Csapat neve">
+<button onclick="addTeam()">Hozzáadás</button>
+<div id="teamList"></div>
+
+<h2>Csoportok kezelése</h2>
+<input id="teamPerGroup" type="number" placeholder="Hány csapat / csoport">
+<button onclick="createGroups()">Automatikus generálás</button>
+<button onclick="manualGroupSetup()">Kézi csoportok szerkesztése</button>
+<div id="manualGroups"></div>
+
+<h2>Mérkőzések</h2>
+<select id="matchSelect"></select><br>
+<input id="scoreA" type="number" placeholder="Hazai gól">
+<input id="scoreB" type="number" placeholder="Vendég gól">
+<button onclick="saveResult()">Eredmény mentése</button>
+
+<div id="matchList"></div>
+
+<h2>Kieséses szakasz</h2>
+<input id="advanceCount" type="number" placeholder="Hány csapat jut tovább">
+<button onclick="generateKnockouts()">Kieséses szakasz generálása</button>
+<div id="knockoutDisplay"></div>
+
+<button onclick="window.location='index.html'">Nézői felület megnyitása</button>
+</div>
+</div>
+
+<script src="login.js"></script>
+<script src="data.js"></script>
+
 <script>
-/* -----------------------
-   ADATMODELL (localStorage)
-   ----------------------- */
-const STORAGE_KEY = "tournamentDB_v1";
-
-function loadDB(){
-  let raw = localStorage.getItem(STORAGE_KEY);
-  if(!raw){ 
-    const initial = { users:[], loggedIn:null, tournaments:[] };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-    return initial;
-  }
-  try{ return JSON.parse(raw); }catch(e){ const initial={ users:[], loggedIn:null, tournaments:[]}; localStorage.setItem(STORAGE_KEY, JSON.stringify(initial)); return initial;}
-}
-function saveDB(){
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(DB));
-  // storage event will fire in other tabs - viewers can listen and refresh UI
-}
-let DB = loadDB();
-
-/* -----------------------
-   AUTH (simple local)
-   ----------------------- */
-function uiRegister(){
-  const u = document.getElementById("regUser").value.trim();
-  const p = document.getElementById("regPass").value;
-  if(!u||!p){ alert("Adj felhasználónevet és jelszót"); return; }
-  if(DB.users.find(x=>x.user===u)){ alert("Létezik ilyen felhasználó"); return; }
-  DB.users.push({ user:u, pass:p });
-  DB.loggedIn = u;
-  saveDB(); refreshAuthUI();
-  alert("Regisztráció kész és bejelentkezve: " + u);
-}
-function uiLogin(){
-  const u = document.getElementById("logUser").value.trim();
-  const p = document.getElementById("logPass").value;
-  if(!u||!p){ alert("Adj felhasználónevet és jelszót"); return; }
-  const user = DB.users.find(x=>x.user===u && x.pass===p);
-  if(!user){ alert("Hibás adatok"); return; }
-  DB.loggedIn = u; saveDB(); refreshAuthUI();
-}
-function uiLogout(){
-  DB.loggedIn = null; saveDB(); refreshAuthUI();
-}
-function refreshAuthUI(){
-  document.getElementById("who").innerText = DB.loggedIn ? ("Bejelentkezve: "+DB.loggedIn) : "Nincs bejelentkezve";
-  document.getElementById("adminPanel").style.display = DB.loggedIn ? "block" : "none";
-  if(DB.loggedIn){
-    renderTournamentList();
-    renderAllUI();
-  }
-}
-refreshAuthUI();
-
-/* -----------------------
-   TORNÁK
-   ----------------------- */
-function createTournament(){
-  const name = document.getElementById("newTournamentName").value.trim();
-  if(!name){ alert("Adj tornanevet"); return; }
-  const t = { id: Date.now(), name, teams:[], groups: {}, matches: [], knockout: [], podium: [] };
-  DB.tournaments.push(t); saveDB(); renderTournamentList(); selectTournament(t.id);
-}
-function renderTournamentList(){
-  const el = document.getElementById("tournamentList"); el.innerHTML = "";
-  DB.tournaments.forEach(t=>{
-    const d=document.createElement("div");
-    d.className="groupBox";
-    d.innerHTML = `<b>${t.name}</b> 
-      <div style="margin-top:6px;">
-        <button onclick="selectTournament(${t.id})">Megnyit</button>
-        <button onclick="deleteTournament(${t.id})">Törlés</button>
-      </div>`;
-    el.appendChild(d);
-  });
-}
-function deleteTournament(id){
-  if(!confirm("Biztos törölni akarod a tornát?")) return;
-  DB.tournaments = DB.tournaments.filter(x=>x.id!==id);
-  saveDB(); renderTournamentList(); clearActive();
-}
-function selectTournament(id){
-  activeTournamentId = id;
-  renderAllUI();
-}
-
-/* -----------------------
-   UTILS
-   ----------------------- */
-let activeTournamentId = null;
-function getActiveTournament(){
-  if(!activeTournamentId){
-    // if none selected, try first
-    if(DB.tournaments.length) { activeTournamentId = DB.tournaments[0].id; }
-    else return null;
-  }
-  return DB.tournaments.find(x=>x.id===activeTournamentId);
-}
-function clearActive(){ activeTournamentId=null; renderAllUI(); }
-
-/* -----------------------
-   CSAPATOK
-   ----------------------- */
-function addTeam(){
-  const t = getActiveTournament();
-  if(!t){ alert("Nincs kiválasztott torna"); return; }
-  const name = document.getElementById("newTeamName").value.trim();
-  if(!name) return alert("Adj csapatnevet!");
-  if(t.teams.includes(name)) return alert("Ez a csapat már fel van véve!");
-  t.teams.push(name);
-  saveDB(); renderTeamList(); renderGroupsArea();
-}
-function removeTeam(name){
-  const t = getActiveTournament();
-  if(!t) return;
-  if(!confirm("Tényleg törlöd a csapatot? "+name)) return;
-  // remove from teams and groups and matches
-  t.teams = t.teams.filter(x=>x!==name);
-  for(let g in t.groups) t.groups[g] = t.groups[g].filter(x=>x!==name);
-  t.matches = t.matches.filter(m=>m.home!==name && m.away!==name);
-  saveDB(); renderTeamList(); renderGroupsArea(); renderMatches();
-}
-function renderTeamList(){
-  const t = getActiveTournament();
-  const el = document.getElementById("teamList"); el.innerHTML = "";
-  if(!t) { el.innerHTML = "<i>Nincs torna kiválasztva</i>"; return; }
-  t.teams.forEach(team=>{
-    const div = document.createElement("div");
-    div.className="teamItem";
-    div.innerHTML = `<div>${team}</div>
-      <div>
-        <button onclick="promptMoveTeam('${team}')">Áthelyez</button>
-        <button onclick="removeTeam('${team}')">Töröl</button>
-      </div>`;
-    el.appendChild(div);
-  });
-}
-function promptMoveTeam(team){
-  const t = getActiveTournament();
-  if(!t) return;
-  const groups = Object.keys(t.groups);
-  if(groups.length<1) return alert("Nincsen csoport. Hozz létre előbb.");
-  const target = prompt("Melyik csoportba helyezzem át? (pontosan a név)", groups.join(", "));
-  if(!target) return;
-  // remove from any group
-  for(let g in t.groups) t.groups[g] = t.groups[g].filter(x=>x!==team);
-  // add to target (create if not exist)
-  if(!t.groups[target]) t.groups[target]=[];
-  t.groups[target].push(team);
-  saveDB(); renderAllUI();
-}
-
-/* -----------------------
-   CSOPORTOK
-   ----------------------- */
-function addGroupUI(){
-  const t = getActiveTournament();
-  if(!t) return alert("Válassz tornát");
-  let i = Object.keys(t.groups).length+1;
-  let name = "Csoport "+i;
-  // ensure unique
-  while(t.groups[name]) { i++; name = "Csoport "+i; }
-  t.groups[name]=[];
-  saveDB(); renderGroupsArea(); renderManualGroups(); 
-}
-function autoCreateGroups(){
-  const t = getActiveTournament();
-  if(!t) return alert("Válassz tornát");
-  const per = Number(document.getElementById("teamsPerGroup").value);
-  if(!per || per<2) return alert("Adj meg érvényes csapatszámot per csoport (>=2)");
-  // shuffle
-  const shuffled = [...t.teams].sort(()=>Math.random()-0.5);
-  t.groups = {};
-  let idx=0, gnum=1;
-  while(idx < shuffled.length){
-    t.groups["Csoport "+gnum] = shuffled.slice(idx, idx+per);
-    idx += per;
-    gnum++;
-  }
-  // if last group too small (1) then merge with previous
-  const keys = Object.keys(t.groups);
-  if(keys.length>1){
-    const lastKey = keys[keys.length-1];
-    if(t.groups[lastKey].length < Math.ceil(per/2)){
-      const prevKey = keys[keys.length-2];
-      t.groups[prevKey] = t.groups[prevKey].concat(t.groups[lastKey]);
-      delete t.groups[lastKey];
+// --- Login kezelése ---
+function updateAdminView() {
+    if(getLoggedInUser()){
+        document.getElementById("loginSection").style.display="none";
+        document.getElementById("adminPanel").style.display="block";
+        renderTournamentList();
+        renderTeamList();
+        fillMatchSelect();
+        renderMatchList();
     }
-  }
-  generateGroupMatches(); saveDB(); renderAllUI();
 }
+updateAdminView();
 
-function renderGroupsArea(){
-  const t = getActiveTournament();
-  const el = document.getElementById("groupsArea");
-  el.innerHTML = "";
-  if(!t) return el.innerHTML = "<i>Válassz tornát</i>";
-  for(let g in t.groups){
-    const div = document.createElement("div");
-    div.className="groupBox";
-    let html = `<b>${g}</b><div style="margin-top:6px">`;
-    t.groups[g].forEach(team => {
-      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
-                 <div>${team}</div>
-                 <div>
-                   <select id="sel_${g}_${team}">${Object.keys(t.groups).filter(x=>x!==g).map(x=>`<option>${x}</option>`).join("")}</select>
-                   <button onclick="moveTeam('${g}',document.getElementById('sel_${g}_${team}').value,'${team}')">Áthelyez</button>
-                   <button onclick="removeFromGroup('${g}','${team}')">Töröl</button>
-                 </div>
-               </div>`;
-    });
-    html += `</div>`;
-    div.innerHTML = html;
-    el.appendChild(div);
-  }
-}
-function moveTeam(fromG,toG,team){
-  const t = getActiveTournament();
-  if(!t) return;
-  // remove from source
-  t.groups[fromG] = t.groups[fromG].filter(x=>x!==team);
-  if(!t.groups[toG]) t.groups[toG]=[];
-  if(!t.groups[toG].includes(team)) t.groups[toG].push(team);
-  saveDB(); renderGroupsArea(); generateGroupMatches(); renderMatches();
-}
-function removeFromGroup(g,team){
-  const t = getActiveTournament();
-  if(!t) return;
-  if(!confirm("Tényleg törlöd a csapatot a csoportból?")) return;
-  t.groups[g] = t.groups[g].filter(x=>x!==team);
-  saveDB(); renderGroupsArea(); generateGroupMatches(); renderMatches();
-}
+function logout(){ logoutUser(); location.reload(); }
+function handleRegister(){ let r=registerUser(reg_user.value, reg_pass.value); alert(r==="OK"?"Sikeres regisztráció":r); }
+function handleLogin(){ let r=loginUser(login_user.value, login_pass.value); if(r==="OK"){updateAdminView();} else alert(r); }
 
-/* -----------------------
-   MÉRKŐZÉSEK (csoportkör)
-   ----------------------- */
-function regenerateMatches(){
-  generateGroupMatches();
-  saveDB(); renderMatches();
-}
-function generateGroupMatches(){
-  const t = getActiveTournament();
-  if(!t) return;
-  t.matches = [];
-  for(let g in t.groups){
-    const arr = t.groups[g];
-    for(let i=0;i<arr.length;i++){
-      for(let j=i+1;j<arr.length;j++){
-        t.matches.push({ id:Date.now()+Math.random(), group:g, home:arr[i], away:arr[j], datetime:"", homeScore:null, awayScore:null, order:t.matches.length });
-      }
-    }
-  }
-  // ensure stable order
-  t.matches.sort((a,b)=>a.order - b.order);
-  saveDB();
-}
-function renderMatches(){
-  const t = getActiveTournament();
-  const el = document.getElementById("matchesArea");
-  el.innerHTML = "";
-  if(!t) return;
-  // sort by order
-  t.matches.sort((a,b)=> (a.order||0) - (b.order||0) );
-  t.matches.forEach((m, idx)=>{
-    const div = document.createElement("div");
-    div.className="matchRow";
-    div.innerHTML = `
-      <div style="flex:1"><b>${m.group}</b> — ${m.home} vs ${m.away}</div>
-      <div>Időpont: <input value="${m.datetime||''}" onchange="setMatchDate(${idx}, this.value)" placeholder="YYYY-MM-DD HH:MM"></div>
-      <div>
-        Eredmény: 
-        <input size="3" value="${m.homeScore!=null?m.homeScore:''}" onchange="setMatchScore(${idx}, 'home', this.value)">
-        :
-        <input size="3" value="${m.awayScore!=null?m.awayScore:''}" onchange="setMatchScore(${idx}, 'away', this.value)">
-      </div>
-      <div>
-        <button onclick="moveMatchUp(${idx})">▲</button>
-        <button onclick="moveMatchDown(${idx})">▼</button>
-        <button onclick="deleteMatch(${idx})">Töröl</button>
-      </div>
-    `;
-    el.appendChild(div);
-  });
-}
-function setMatchDate(i,val){
-  const t = getActiveTournament(); if(!t) return;
-  t.matches[i].datetime = val;
-  saveDB(); // notify viewers via storage event
-}
-function setMatchScore(i, side, val){
-  const t = getActiveTournament(); if(!t) return;
-  if(val === "") { if(side==='home') t.matches[i].homeScore = null; else t.matches[i].awayScore = null; }
-  else { if(side==='home') t.matches[i].homeScore = Number(val); else t.matches[i].awayScore = Number(val); }
-  saveDB();
-}
-function moveMatchUp(i){
-  const t = getActiveTournament(); if(!t||i<=0) return;
-  const tmp = t.matches[i-1].order; t.matches[i-1].order = t.matches[i].order; t.matches[i].order = tmp;
-  saveDB(); renderMatches();
-}
-function moveMatchDown(i){
-  const t = getActiveTournament(); if(!t||i>=t.matches.length-1) return;
-  const tmp = t.matches[i+1].order; t.matches[i+1].order = t.matches[i].order; t.matches[i].order = tmp;
-  saveDB(); renderMatches();
-}
-function deleteMatch(i){
-  const t = getActiveTournament(); if(!t) return;
-  if(!confirm("Tényleg törölni szeretnéd a mérkőzést?")) return;
-  t.matches.splice(i,1); saveDB(); renderMatches();
-}
-
-/* -----------------------
-   KIESÉSES (automata & kézi)
-   ----------------------- */
-function autoKnockout(){
-  const t = getActiveTournament(); if(!t) return;
-  const adv = Number(document.getElementById("advanceCount").value);
-  if(!adv) return alert("Add meg, hány jut tovább csoportonként");
-  // compute standings per group
-  let qualified = [];
-  for(let g in t.groups){
-    // compute points
-    const pts = {};
-    t.groups[g].forEach(tm=>pts[tm]=0);
-    t.matches.filter(m=>m.group===g).forEach(m=>{
-      if(m.homeScore!=null && m.awayScore!=null){
-        if(m.homeScore > m.awayScore) pts[m.home]+=3;
-        else if(m.homeScore < m.awayScore) pts[m.away]+=3;
-        else { pts[m.home] += 1; pts[m.away] += 1; }
-      }
-    });
-    // sort by points
-    const sorted = Object.keys(pts).sort((a,b)=>pts[b]-pts[a]);
-    qualified.push(...sorted.slice(0,adv));
-  }
-  // simple pairing (first vs last etc.)
-  t.knockout = [];
-  while(qualified.length >= 2){
-    const a = qualified.shift();
-    const b = qualified.pop();
-    t.knockout.push({ home:a, away:b, homeScore:null, awayScore:null });
-  }
-  saveDB(); renderKnockoutArea();
-}
-function manualKnockoutUI(){
-  const t = getActiveTournament(); if(!t) return alert("Nincs torna");
-  const area = document.getElementById("knockoutArea"); area.innerHTML = "";
-  // list qualified candidates from last computed or allow picking
-  // We'll list all teams and let admin pick pairs
-  let html = `<div style="margin-bottom:8px;"><b>Kézi párosítás</b></div>`;
-  html += `<div id="manualPairs"></div>`;
-  html += `<div style="margin-top:8px;"><button onclick="saveManualPairs()">Párosítások mentése</button></div>`;
-  area.innerHTML = html;
-  // create selectors for pairs - allow admin to choose any team per slot
-  const manualPairs = document.getElementById("manualPairs");
-  manualPairs.innerHTML = "";
-  // default create N pairs for possible max teams
-  const teams = [...t.teams];
-  const maxPairs = Math.floor(teams.length/2);
-  for(let i=0;i<maxPairs;i++){
-    const div = document.createElement("div");
-    const selA = document.createElement("select");
-    const selB = document.createElement("select");
-    [selA,selB].forEach(s=>{
-      teams.forEach(tm=>{ const o=document.createElement("option"); o.value=tm; o.textContent=tm; s.appendChild(o); });
-    });
-    div.appendChild(document.createTextNode("A: ")); div.appendChild(selA);
-    div.appendChild(document.createTextNode("  B: ")); div.appendChild(selB);
-    div.style.marginBottom="6px";
-    manualPairs.appendChild(div);
-  }
-}
-function saveManualPairs(){
-  const t = getActiveTournament(); if(!t) return;
-  const manualPairs = document.getElementById("manualPairs");
-  const selects = manualPairs.querySelectorAll("select");
-  const pairs = [];
-  for(let i=0;i<selects.length;i+=2){
-    const a = selects[i].value;
-    const b = selects[i+1].value;
-    if(a && b && a!==b) pairs.push({ home:a, away:b, homeScore:null, awayScore:null });
-  }
-  t.knockout = pairs;
-  saveDB(); renderKnockoutArea();
-}
-
-function renderKnockoutArea(){
-  const t = getActiveTournament();
-  const area = document.getElementById("knockoutArea"); area.innerHTML = "";
-  if(!t || !t.knockout || !t.knockout.length) return area.innerHTML = "<i>Nincs kieséses párosítás</i>";
-  t.knockout.forEach((m,i)=>{
-    const div = document.createElement("div");
-    div.className="matchRow";
-    div.innerHTML = `<div style="flex:1">${m.home} vs ${m.away}</div>
-      <div>
-        <input value="${m.homeScore!=null?m.homeScore:''}" onchange="setKnockScore(${i},'home',this.value)" size="3"> :
-        <input value="${m.awayScore!=null?m.awayScore:''}" onchange="setKnockScore(${i},'away',this.value)" size="3">
-      </div>`;
-    area.appendChild(div);
-  });
-}
-function setKnockScore(i,side,val){
-  const t = getActiveTournament(); if(!t) return;
-  if(side==='home') t.knockout[i].homeScore = val==="" ? null : Number(val);
-  else t.knockout[i].awayScore = val==="" ? null : Number(val);
-  saveDB();
-}
-
-/* -----------------------
-   DOBÓGÓ (egyszerű)
-   ----------------------- */
-function computePodium(){
-  const t = getActiveTournament(); if(!t) return;
-  // simple: if knockout last match contains scores -> decide winner
-  if(!t.knockout || t.knockout.length===0) return alert("Nincs kieséses meccs");
-  const final = t.knockout[t.knockout.length-1];
-  if(final.homeScore==null || final.awayScore==null) return alert("Töltsd ki a döntő eredményét");
-  const champ = final.homeScore > final.awayScore ? final.home : final.away;
-  const second = champ===final.home ? final.away : final.home;
-  t.podium = [champ, second, "3. hely - nincs kisorsolva"];
-  saveDB();
-  document.getElementById("podiumArea").innerHTML = `🥇 ${t.podium[0]}<br>🥈 ${t.podium[1]}<br>🥉 ${t.podium[2]}`;
-}
-
-/* -----------------------
-   GLOBAL RENDER
-   ----------------------- */
-function renderAllUI(){
-  renderTournamentList();
-  renderTeamList();
-  renderGroupsArea();
-  renderManualGroups();
-  renderMatches();
-  renderKnockoutArea();
-  const t = getActiveTournament();
-  document.getElementById("podiumArea").innerHTML = t && t.podium ? (`🥇 ${t.podium[0]||''}<br>🥈 ${t.podium[1]||''}<br>🥉 ${t.podium[2]||''}`) : "";
-}
-
-/* -----------------------
-   Init: if user logged in, show UI
-   ----------------------- */
-(function init(){
-  DB = loadDB();
-  if(DB.loggedIn) { activeTournamentId = DB.tournaments.length ? DB.tournaments[0].id : null; renderAllUI(); }
-})();
-
-/* -----------------------
-   Listen storage event so multiple tabs (admin & viewer) can update
-   ----------------------- */
-window.addEventListener("storage", (e)=>{
-  if(e.key === STORAGE_KEY){
-    DB = loadDB();
-    renderAllUI();
-  }
-});
-<script>
+// --- Eredmény mentése ---
 function saveResult(){
-    let select = document.getElementById("matchSelect");
-    let matchId = select.value;
+    const idx = document.getElementById("matchSelect").value;
+    const a = parseInt(document.getElementById("scoreA").value);
+    const b = parseInt(document.getElementById("scoreB").value);
 
-    let a = document.getElementById("scoreA").value;
-    let b = document.getElementById("scoreB").value;
-    if(a==="" || b===""){
-        alert("Add meg a gólokat!");
+    if(idx === "" || isNaN(a) || isNaN(b)){
+        alert("Hiányzó adat!");
         return;
     }
 
-    saveMatchResult(matchId, Number(a), Number(b));
-
+    saveMatchResult(idx, a, b);
+    renderMatchList();
     alert("Eredmény elmentve!");
-    fillMatchList(); // frissíti a listát, hogy látszódjon az új eredmény
 }
 </script>
 
-</script>
 </body>
 </html>
